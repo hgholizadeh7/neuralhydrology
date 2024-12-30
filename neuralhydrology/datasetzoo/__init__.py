@@ -1,4 +1,6 @@
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
+from neuralhydrology.datasetzoo.Alabamagwl import AlabamaGWL
+from neuralhydrology.datasetzoo.srsblstm import SrSbLstm
 from neuralhydrology.datasetzoo.camelsaus import CamelsAUS
 from neuralhydrology.datasetzoo.camelsbr import CamelsBR
 from neuralhydrology.datasetzoo.camelscl import CamelsCL
@@ -61,6 +63,10 @@ def get_dataset(cfg: Config,
     """
     if cfg.dataset.lower() == "camels_us":
         Dataset = CamelsUS
+    elif cfg.dataset.lower() == "sr_sb_lstm":
+        Dataset = SrSbLstm
+    elif cfg.dataset.lower() == "Alabama_gwl":
+        Dataset = AlabamaGWL
     elif cfg.dataset.lower() == "camels_gb":
         Dataset = CamelsGB
     elif cfg.dataset.lower() == "camels_aus":
