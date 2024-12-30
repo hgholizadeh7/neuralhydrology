@@ -16,4 +16,5 @@ runs/
 configs/*
 .ipynb_checkpoints/
 data/*
+!data/sr_sb_data/
 docs/build/*
