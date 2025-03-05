@@ -325,10 +325,10 @@ class Config(object):
 
     @device.setter
     def device(self, device: str):
-        if device == "cpu" or device.startswith("cuda:"):
+        if device == "cpu" or device.startswith("cuda:") or device == "mps":
             self._cfg["device"] = device
         else:
-            raise ValueError("'device' must be either 'cpu' or a 'cuda:X', with 'X' being the GPU ID.")
+            raise ValueError("'device' must be either 'cpu', 'mps', or 'cuda:X', with 'X' being the GPU ID.")
 
     @property
     def duplicate_features(self) -> dict:
@@ -343,6 +343,14 @@ class Config(object):
             return {duplicate_features: 1}
         else:
             raise RuntimeError(f"Unsupported type {type(duplicate_features)} for 'duplicate_features' argument.")
+
+    @property
+    def dynamic_conceptual_inputs(self) -> List[str]:
+        return self._as_default_list(self._cfg.get("dynamic_conceptual_inputs", []))
+
+    @property
+    def warmup_period(self) -> int:
+        return self._cfg.get("warmup_period", 0)
 
     @property
     def dynamic_inputs(self) -> Union[List[str], Dict[str, List[str]]]:
@@ -520,6 +528,18 @@ class Config(object):
         self._cfg["loss"] = loss
 
     @property
+    def mamba_d_conv(self) -> int:
+        return self._cfg.get("d_conv", 4)
+
+    @property
+    def mamba_d_state(self) -> int:
+        return self._cfg.get("d_state", 16)
+
+    @property
+    def mamba_expand(self) -> int:
+        return self._cfg.get("expand", 2)
+
+    @property
     def mass_inputs(self) -> List[str]:
         return self._as_default_list(self._cfg.get("mass_inputs", []))
 
@@ -542,6 +562,10 @@ class Config(object):
     @property
     def model(self) -> str:
         return self._get_value_verbose("model")
+
+    @property
+    def conceptual_model(self) -> str:
+        return self._cfg.get("conceptual_model", "SHM")
 
     @property
     def n_distributions(self) -> int:

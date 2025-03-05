@@ -14,10 +14,9 @@ from tqdm import tqdm
 import neuralhydrology.training.loss as loss
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import load_basin_file
+from neuralhydrology.datautils.utils import load_basin_file, load_scaler
 from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
-from neuralhydrology.evaluation.utils import load_scaler
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.training import get_loss_obj, get_optimizer, get_regularization_obj
 from neuralhydrology.training.logger import Logger
@@ -347,10 +346,20 @@ class BaseTrainer(object):
                     raise RuntimeError(f"This machine does not have GPU #{gpu_id} ")
                 else:
                     self.device = torch.device(self.cfg.device)
+            elif self.cfg.device == "mps":
+                if torch.backends.mps.is_available():
+                    self.device = torch.device("mps")
+                else:
+                    raise RuntimeError("MPS device is not available.")
             else:
                 self.device = torch.device("cpu")
         else:
-            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda:0")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
         LOGGER.info(f"### Device {self.device} will be used for training")
 
     def _create_folder_structure(self):

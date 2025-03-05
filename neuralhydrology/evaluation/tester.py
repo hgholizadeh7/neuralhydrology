@@ -16,10 +16,10 @@ from tqdm import tqdm
 
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, load_scaler, sort_frequencies
 from neuralhydrology.evaluation import plots
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
-from neuralhydrology.evaluation.utils import load_scaler, load_basin_id_encoding, metrics_to_dataframe
+from neuralhydrology.evaluation.utils import load_basin_id_encoding, metrics_to_dataframe
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.training import get_loss_obj, get_regularization_obj
@@ -82,16 +82,26 @@ class BaseTester(object):
 
     def _set_device(self):
         if self.cfg.device is not None:
-            if "cuda" in self.cfg.device:
+            if self.cfg.device.startswith("cuda"):
                 gpu_id = int(self.cfg.device.split(':')[-1])
                 if gpu_id > torch.cuda.device_count():
                     raise RuntimeError(f"This machine does not have GPU #{gpu_id} ")
                 else:
                     self.device = torch.device(self.cfg.device)
+            elif self.cfg.device == "mps":
+                if torch.backends.mps.is_available():
+                    self.device = torch.device("mps")
+                else:
+                    raise RuntimeError("MPS device is not available.")
             else:
                 self.device = torch.device("cpu")
         else:
-            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda:0")
+            elif torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
 
     def _load_run_data(self):
         """Load run specific data from run directory"""
@@ -100,7 +110,7 @@ class BaseTester(object):
         self.basins = load_basin_file(getattr(self.cfg, f"{self.period}_basin_file"))
 
         # load feature scaler
-        self.scaler = load_scaler(self.cfg.run_dir)
+        self.scaler = load_scaler(self.run_dir)
 
         # check for old scaler files, where the center/scale parameters had still old names
         if "xarray_means" in self.scaler.keys():
@@ -110,7 +120,7 @@ class BaseTester(object):
 
         # load basin_id to integer dictionary for one-hot-encoding
         if self.cfg.use_basin_id_encoding:
-            self.id_to_int = load_basin_id_encoding(self.cfg.run_dir)
+            self.id_to_int = load_basin_id_encoding(self.run_dir)
 
         for file in self.cfg.additional_feature_files:
             with open(file, "rb") as fp:
@@ -385,7 +395,7 @@ class BaseTester(object):
         parent_directory.mkdir(parents=True, exist_ok=True)
 
         # save metrics any time this function is called, as long as they exist
-        if self.cfg.metrics:
+        if self.cfg.metrics and results is not None:
             df = metrics_to_dataframe(results, self.cfg.metrics)
             metrics_file = parent_directory / f"{self.period}_metrics.csv"
             df.to_csv(metrics_file)
